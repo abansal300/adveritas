@@ -1,0 +1,26 @@
+# general
+.DS_Store
+.env
+.env.*
+*.log
+__pycache__/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# node
+node_modules/
+.next/
+out/
+
+# python
+.venv/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+
+# docker
+dist/
+data/
+minio-data/

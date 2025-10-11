@@ -1,0 +1,51 @@
+version: "3.9"
+services:
+  api:
+    build: ./backend
+    container_name: adveritas-api
+    env_file: .env
+    ports: ["8000:8000"]
+    depends_on: [db, redis, minio]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: ./backend
+    container_name: adveritas-worker
+    env_file: .env
+    depends_on: [api, db, redis, minio]
+    command: celery -A app.celery_app worker -l INFO --concurrency=1
+    restart: on-failure
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: adveritas-db
+    environment:
+      POSTGRES_PASSWORD: adveritas
+      POSTGRES_USER: adveritas
+      POSTGRES_DB: adveritas
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7
+    container_name: adveritas-redis
+    ports: ["6379:6379"]
+
+  minio:
+    image: minio/minio:latest
+    container_name: adveritas-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports: ["9000:9000","9001:9001"]
+    volumes:
+      - ./minio-data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: adveritas-frontend
+    env_file: .env
+    ports: ["3000:3000"]
+    depends_on: [api]
