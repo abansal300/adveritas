@@ -1,8 +1,39 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 
 // API URL - use environment variable in production, localhost in development
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Type definitions
+interface Video {
+  id: number;
+  title?: string;
+  source_url?: string;
+  status?: string;
+  thumbnail_url?: string;
+  duration?: number;
+}
+
+interface Claim {
+  id: number;
+  claim_text: string;
+}
+
+interface Evidence {
+  id: number;
+  title: string;
+  url: string;
+  snippet: string;
+  similarity: number;
+}
+
+interface Verdict {
+  label: string;
+  confidence: number;
+  rationale: string;
+  ok: boolean;
+}
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -96,24 +127,24 @@ export default function Home() {
 }
 
 function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (id: number | null) => void }) {
-  const [video, setVideo] = useState<any>(null);
-  const [claims, setClaims] = useState<any[]>([]);
+  const [video, setVideo] = useState<Video | null>(null);
+  const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchVideo = async () => {
+  const fetchVideo = useCallback(async () => {
     const res = await fetch(`${API_URL}/videos/${videoId}`);
     const data = await res.json();
     setVideo(data);
     return data;
-  };
+  }, [videoId]);
 
-  const fetchClaims = async () => {
+  const fetchClaims = useCallback(async () => {
     const res = await fetch(`${API_URL}/claims/video/${videoId}`);
     const data = await res.json();
     setClaims(data);
     return data;
-  };
+  }, [videoId]);
 
   const extractClaims = async () => {
     setLoading(true);
@@ -149,7 +180,7 @@ function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (i
 
       return () => clearInterval(interval);
     }
-  }, [videoId]);
+  }, [videoId, fetchVideo, fetchClaims]);
 
   const statusColor = video?.status === "TRANSCRIBED" ? "green" :
     video?.status === "PROCESSING" ? "yellow" : "gray";
@@ -169,9 +200,11 @@ function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (i
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           {video?.thumbnail_url && (
             <div className="md:col-span-1">
-              <img
+              <Image
                 src={video.thumbnail_url}
                 alt={video.title || "Video thumbnail"}
+                width={320}
+                height={180}
                 className="w-full rounded-lg shadow-md"
               />
             </div>
@@ -237,26 +270,26 @@ function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (i
 }
 
 function ClaimDetails({ claimId }: { claimId: number }) {
-  const [evidence, setEvidence] = useState<any[]>([]);
-  const [verdict, setVerdict] = useState<any>(null);
+  const [evidence, setEvidence] = useState<Evidence[]>([]);
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [loadingEvidence, setLoadingEvidence] = useState(false);
   const [loadingVerdict, setLoadingVerdict] = useState(false);
 
-  const fetchEvidence = async () => {
+  const fetchEvidence = useCallback(async () => {
     const res = await fetch(`${API_URL}/evidence/claim/${claimId}`);
     const data = await res.json();
     setEvidence(data);
     return data;
-  };
+  }, [claimId]);
 
-  const fetchVerdict = async () => {
+  const fetchVerdict = useCallback(async () => {
     const res = await fetch(`${API_URL}/verdicts/claim/${claimId}`);
     const data = await res.json();
     if (data.ok) {
       setVerdict(data);
     }
     return data;
-  };
+  }, [claimId]);
 
   const triggerEvidence = async () => {
     setLoadingEvidence(true);
@@ -291,7 +324,7 @@ function ClaimDetails({ claimId }: { claimId: number }) {
   useEffect(() => {
     fetchEvidence();
     fetchVerdict();
-  }, [claimId]);
+  }, [claimId, fetchEvidence, fetchVerdict]);
 
   const verdictColor = verdict?.label === "TRUE" ? "green" :
     verdict?.label === "FALSE" ? "red" :
