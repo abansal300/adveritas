@@ -1,0 +1,82 @@
+services:
+  # FastAPI backend
+  - type: web
+    name: adveritas-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: adveritas-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: adveritas-redis
+          property: connectionString
+      - key: MINIO_ENDPOINT
+        value: https://adveritas-minio.onrender.com
+      - key: MINIO_BUCKET
+        value: adveritas
+      - key: MINIO_ACCESS_KEY
+        generateValue: true
+      - key: MINIO_SECRET_KEY
+        generateValue: true
+      - key: EMBED_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: CLAIM_MIN_SCORE
+        value: "0.35"
+      - key: VERDICT_MODEL
+        value: gpt2-medium
+      - key: VERDICT_TOPK
+        value: "5"
+      - key: HF_TOKEN
+        sync: false
+    healthCheckPath: /
+
+  # Celery worker
+  - type: worker
+    name: adveritas-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: celery -A app.celery_app.celery_app worker -l INFO --concurrency=1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: adveritas-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: adveritas-redis
+          property: connectionString
+      - key: MINIO_ENDPOINT
+        value: https://adveritas-minio.onrender.com
+      - key: MINIO_BUCKET
+        value: adveritas
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: EMBED_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: CLAIM_MIN_SCORE
+        value: "0.35"
+      - key: VERDICT_MODEL
+        value: gpt2-medium
+      - key: VERDICT_TOPK
+        value: "5"
+      - key: HF_TOKEN
+        sync: false
+
+databases:
+  - name: adveritas-db
+    databaseName: adveritas
+    user: adveritas
+    plan: free
+
+  - name: adveritas-redis
+    plan: free
+

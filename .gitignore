@@ -16,6 +16,7 @@ out/
 
 # python
 .venv/
+venv/
 *.pyc
 .mypy_cache/
 .pytest_cache/

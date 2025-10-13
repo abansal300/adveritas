@@ -1,51 +1,135 @@
 version: "3.9"
+
+x-common-env: &common-env
+  DATABASE_URL: postgresql+psycopg://adveritas:adveritas@db:5432/adveritas
+  REDIS_URL: redis://redis:6379/0
+  # ---- MinIO (S3-compatible) ----
+  MINIO_ENDPOINT: http://minio:9000
+  MINIO_BUCKET: adveritas
+  MINIO_ACCESS_KEY: minioadmin
+  MINIO_SECRET_KEY: minioadmin
+  # ---- Models / knobs (tune as needed) ----
+  EMBED_MODEL: sentence-transformers/all-MiniLM-L6-v2
+  CLAIM_MIN_SCORE: "0.35"
+  # Development: Using GPT-2 (very fast on CPU, good for testing)
+  VERDICT_MODEL: gpt2-medium
+  # Production options (use when deploying to server with GPU):
+  # VERDICT_MODEL: meta-llama/Llama-3.2-3B-Instruct  # Best quality, needs GPU + HF token
+  # VERDICT_MODEL: Qwen/Qwen2-1.5B-Instruct  # Good balance
+  # VERDICT_MODEL: TinyLlama/TinyLlama-1.1B-Chat-v1.0  # Lightest
+  VERDICT_TOPK: "5"
+  # Set your Hugging Face token below (get from https://huggingface.co/settings/tokens)
+  HF_TOKEN: ${HF_TOKEN:-}
+  # Optional: bypass YouTube age/region limits (mount a cookies file below)
+  YTDLP_COOKIES_PATH: /secrets/youtube_cookies.txt
+
 services:
-  api:
-    build: ./backend
-    container_name: adveritas-api
-    env_file: .env
-    ports: ["8000:8000"]
-    depends_on: [db, redis, minio]
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-  worker:
-    build: ./backend
-    container_name: adveritas-worker
-    env_file: .env
-    depends_on: [api, db, redis, minio]
-    command: celery -A app.celery_app worker -l INFO --concurrency=1
-    restart: on-failure
-
+  # ---------- Postgres with pgvector ----------
   db:
     image: pgvector/pgvector:pg16
     container_name: adveritas-db
     environment:
-      POSTGRES_PASSWORD: adveritas
       POSTGRES_USER: adveritas
+      POSTGRES_PASSWORD: adveritas
       POSTGRES_DB: adveritas
-    ports: ["5432:5432"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U adveritas -d adveritas" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
+  # ---------- Redis (Celery broker/backend) ----------
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: adveritas-redis
-    ports: ["6379:6379"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
+  # ---------- MinIO (S3-compatible object storage) ----------
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: adveritas-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
-    ports: ["9000:9000","9001:9001"]
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
     volumes:
-      - ./minio-data:/data
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
-  frontend:
+  # ---------- FastAPI backend (hot-reload) ----------
+  api:
     build:
-      context: ./frontend
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: adveritas-frontend
-    env_file: .env
-    ports: ["3000:3000"]
-    depends_on: [api]
+    container_name: adveritas-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      # optional cookies file for yt-dlp (uncomment if you have it)
+      # - ./secrets/youtube_cookies.txt:/secrets/youtube_cookies.txt:ro
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  # ---------- Celery worker (unified app) ----------
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adveritas-worker
+    command: celery -A app.celery_app.celery_app worker -l INFO --concurrency=1
+    volumes:
+      - ./backend:/app
+      # optional cookies file for yt-dlp
+      # - ./secrets/youtube_cookies.txt:/secrets/youtube_cookies.txt:ro
+    environment:
+      <<: *common-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+  # ---------- (Optional) Frontend dev server ----------
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: adveritas-frontend
+  #   command: npm run dev -- --host
+  #   volumes:
+  #     - ./frontend:/usr/src/app
+  #   ports:
+  #     - "5173:5173"
+  #   depends_on:
+  #     - api
+
+volumes:
+  dbdata:
+  minio_data:
