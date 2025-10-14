@@ -20,6 +20,12 @@ x-common-env: &common-env
   VERDICT_TOPK: "5"
   # Set your Hugging Face token below (get from https://huggingface.co/settings/tokens)
   HF_TOKEN: ${HF_TOKEN:-}
+  # ---- AWS Bedrock (Production option - best quality, fastest) ----
+  USE_BEDROCK: ${USE_BEDROCK:-false}
+  BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-meta.llama3-2-3b-instruct-v1:0}
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
   # Optional: bypass YouTube age/region limits (mount a cookies file below)
   YTDLP_COOKIES_PATH: /secrets/youtube_cookies.txt
 
