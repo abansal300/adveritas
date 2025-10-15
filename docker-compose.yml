@@ -7,21 +7,13 @@ x-common-env: &common-env
   MINIO_ENDPOINT: http://minio:9000
   MINIO_BUCKET: adveritas
   MINIO_ACCESS_KEY: minioadmin
-  MINIO_SECRET_KEY: minioadmin
-  # ---- Models / knobs (tune as needed) ----
+  MINIO_SECRET_KEY: minioadmin # ---- Models / knobs ----
   EMBED_MODEL: sentence-transformers/all-MiniLM-L6-v2
   CLAIM_MIN_SCORE: "0.35"
-  # Development: Using GPT-2 (very fast on CPU, good for testing)
-  VERDICT_MODEL: gpt2-medium
-  # Production options (use when deploying to server with GPU):
-  # VERDICT_MODEL: meta-llama/Llama-3.2-3B-Instruct  # Best quality, needs GPU + HF token
-  # VERDICT_MODEL: Qwen/Qwen2-1.5B-Instruct  # Good balance
-  # VERDICT_MODEL: TinyLlama/TinyLlama-1.1B-Chat-v1.0  # Lightest
   VERDICT_TOPK: "5"
-  # Set your Hugging Face token below (get from https://huggingface.co/settings/tokens)
-  HF_TOKEN: ${HF_TOKEN:-}
-  # ---- AWS Bedrock (Production option - best quality, fastest) ----
-  USE_BEDROCK: ${USE_BEDROCK:-false}
+
+  # ---- AWS Bedrock (Llama 3.2) ----
+  USE_BEDROCK: true
   BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-meta.llama3-2-3b-instruct-v1:0}
   AWS_REGION: ${AWS_REGION:-us-east-1}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}

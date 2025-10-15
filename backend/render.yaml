@@ -64,11 +64,17 @@ services:
         value: sentence-transformers/all-MiniLM-L6-v2
       - key: CLAIM_MIN_SCORE
         value: "0.35"
-      - key: VERDICT_MODEL
-        value: gpt2-medium
       - key: VERDICT_TOPK
         value: "5"
-      - key: HF_TOKEN
+      - key: USE_BEDROCK
+        value: "true"
+      - key: BEDROCK_MODEL_ID
+        value: meta.llama3-2-3b-instruct-v1:0
+      - key: AWS_REGION
+        value: us-east-1
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
         sync: false
 
 databases:
