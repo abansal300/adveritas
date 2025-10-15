@@ -20,6 +20,13 @@ venv/
 *.pyc
 .mypy_cache/
 .pytest_cache/
+*.egg-info/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+*.mo
+*.pot
 
 # docker
 dist/

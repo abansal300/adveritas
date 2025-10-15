@@ -182,8 +182,21 @@ function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (i
     }
   }, [videoId, fetchVideo, fetchClaims]);
 
-  const statusColor = video?.status === "TRANSCRIBED" ? "green" :
-    video?.status === "PROCESSING" ? "yellow" : "gray";
+  // Define status badge styles based on video status
+  const getStatusBadgeStyle = () => {
+    switch (video?.status) {
+      case "TRANSCRIBED":
+        return "bg-green-100 text-green-700";
+      case "PROCESSING":
+        return "bg-yellow-100 text-yellow-700";
+      case "QUEUED":
+        return "bg-blue-100 text-blue-700";
+      case "FAILED":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -191,7 +204,7 @@ function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (i
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-slate-800">Video Status</h2>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium bg-${statusColor}-100 text-${statusColor}-700`}>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeStyle()}`}>
             {video?.status || "Loading..."}
           </span>
         </div>
@@ -232,12 +245,6 @@ function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (i
           <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700">
             <p className="font-medium">Processing...</p>
             <p className="text-sm">This video is being transcribed. Check back in a few minutes.</p>
-            <button
-              onClick={() => setVideoId(4)}
-              className="mt-2 text-sm bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700"
-            >
-              Test with Video ID 4 (Ready)
-            </button>
           </div>
         )}
       </div>
@@ -326,9 +333,35 @@ function ClaimDetails({ claimId }: { claimId: number }) {
     fetchVerdict();
   }, [claimId, fetchEvidence, fetchVerdict]);
 
-  const verdictColor = verdict?.label === "TRUE" ? "green" :
-    verdict?.label === "FALSE" ? "red" :
-      verdict?.label === "PARTLY_TRUE" ? "yellow" : "gray";
+  // Define verdict badge styles based on verdict label
+  const getVerdictStyle = () => {
+    switch (verdict?.label) {
+      case "TRUE":
+        return {
+          container: "bg-green-50 border-green-200",
+          label: "text-green-700",
+          confidence: "text-green-600"
+        };
+      case "FALSE":
+        return {
+          container: "bg-red-50 border-red-200",
+          label: "text-red-700",
+          confidence: "text-red-600"
+        };
+      case "PARTLY_TRUE":
+        return {
+          container: "bg-yellow-50 border-yellow-200",
+          label: "text-yellow-700",
+          confidence: "text-yellow-600"
+        };
+      default:
+        return {
+          container: "bg-gray-50 border-gray-200",
+          label: "text-gray-700",
+          confidence: "text-gray-600"
+        };
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -389,12 +422,12 @@ function ClaimDetails({ claimId }: { claimId: number }) {
           </div>
 
           {verdict ? (
-            <div className={`p-6 bg-${verdictColor}-50 border-2 border-${verdictColor}-200 rounded-lg`}>
+            <div className={`p-6 border-2 rounded-lg ${getVerdictStyle().container}`}>
               <div className="flex items-center justify-between mb-4">
-                <span className={`text-2xl font-bold text-${verdictColor}-700`}>
+                <span className={`text-2xl font-bold ${getVerdictStyle().label}`}>
                   {verdict.label.replace("_", " ")}
                 </span>
-                <span className={`text-lg font-semibold text-${verdictColor}-600`}>
+                <span className={`text-lg font-semibold ${getVerdictStyle().confidence}`}>
                   {(verdict.confidence * 100).toFixed(0)}% confidence
                 </span>
               </div>

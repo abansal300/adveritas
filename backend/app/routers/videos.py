@@ -1,3 +1,9 @@
+"""
+Videos Router
+
+Handles video ingestion from YouTube URLs or direct file uploads,
+and provides endpoints to retrieve video metadata and transcription segments.
+"""
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -11,10 +17,12 @@ from ..ingest import upload_audio_from_url, save_upload_file
 router = APIRouter()
 
 class VideoUrlRequest(BaseModel):
+    """Request model for URL-based video ingestion."""
     source_url: str
     title: Optional[str] = None
 
 def get_db():
+    """Database session dependency for request handlers."""
     db = SessionLocal()
     try:
         yield db
@@ -28,6 +36,21 @@ async def ingest_video(
     file: UploadFile | None = File(None),
     db: Session = Depends(get_db)
 ):
+    """
+    Ingest a video from either a URL or direct file upload.
+    
+    Args:
+        source_url: YouTube or direct video URL
+        title: Optional title for the video
+        file: Optional direct audio file upload
+        db: Database session
+        
+    Returns:
+        Created video record with QUEUED status
+        
+    Raises:
+        HTTPException: 400 if neither source_url nor file is provided
+    """
     if not source_url and not file:
         raise HTTPException(400, "Provide either source_url or file")
 
@@ -50,7 +73,16 @@ async def ingest_video(
 
 @router.post("/ingest_url", response_model=schemas.VideoOut)
 def ingest_video_url(request: VideoUrlRequest, db: Session = Depends(get_db)):
-    """Ingest a video from URL only (simpler endpoint for URL-only uploads)."""
+    """
+    Ingest a video from URL only (simpler JSON endpoint).
+    
+    Args:
+        request: Video URL and optional title
+        db: Database session
+        
+    Returns:
+        Created video record with QUEUED status
+    """
     v = models.Video(source_url=request.source_url, title=request.title, status="QUEUED")
     db.add(v)
     db.commit()
@@ -63,12 +95,35 @@ def ingest_video_url(request: VideoUrlRequest, db: Session = Depends(get_db)):
 
 @router.get("/{video_id}", response_model=schemas.VideoOut)
 def get_video(video_id: int, db: Session = Depends(get_db)):
+    """
+    Get video by ID with current processing status.
+    
+    Args:
+        video_id: ID of the video to retrieve
+        db: Database session
+        
+    Returns:
+        Video record with metadata and status
+        
+    Raises:
+        HTTPException: 404 if video not found
+    """
     v = db.get(models.Video, video_id)
     if not v: raise HTTPException(404, "Video not found")
     return v
 
 @router.get("/{video_id}/segments")
 def list_segments(video_id: int, db: Session = Depends(get_db)):
+    """
+    List all transcription segments for a video.
+    
+    Args:
+        video_id: ID of the video
+        db: Database session
+        
+    Returns:
+        List of segments with timestamps and transcribed text
+    """
     segs = db.query(models.Segment).filter(models.Segment.video_id == video_id).order_by(models.Segment.t_start).all()
     return [
         {"id": s.id, "t_start": s.t_start, "t_end": s.t_end, "text": s.text}
