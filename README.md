@@ -1,4 +1,4 @@
-# AdVeritas 🔍
+# AdVeritas
 
 > **AI-Powered Fact-Checking Platform for Video Content**
 
