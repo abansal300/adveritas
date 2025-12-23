@@ -120,13 +120,13 @@ export default function Home() {
         </div>
 
         {/* Video Results */}
-        {videoId && <VideoResults videoId={videoId} setVideoId={setVideoId} />}
+        {videoId && <VideoResults videoId={videoId} />}
       </main>
     </div>
   );
 }
 
-function VideoResults({ videoId, setVideoId }: { videoId: number; setVideoId: (id: number | null) => void }) {
+function VideoResults({ videoId }: { videoId: number }) {
   const [video, setVideo] = useState<Video | null>(null);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<number | null>(null);

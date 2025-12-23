@@ -8,6 +8,7 @@ __pycache__/
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/tasks.json
+.claude/
 
 # node
 node_modules/
